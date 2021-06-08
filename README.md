@@ -3,7 +3,7 @@
 # Timeral 
 
 ## About
-Timeral is a terminal timer ($terminal + timer = timeral$). It is a small (~500 lines) app that lets you use a timer in your terminal.
+Timeral is a terminal timer (![timer + terminal = timeral](https://latex.codecogs.com/svg.latex?timer&space;+&space;terminal&space;=&space;timeral) ). It is a small (~500 lines) app that lets you use a timer in your terminal.
 
 ## Installation
 Installation is via cloning the repository and building from the source code:
