@@ -1,6 +1,8 @@
 # timeral specific
 build/
 timeral
+.vscode/
+playgrounds/
 # c specific
 *.d
 *.o
