@@ -1,67 +1,101 @@
 #ifndef TIMERAL_LOG_H
 #define TIMERAL_LOG_H
 
-
+#include <stdarg.h>
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
+#include <fcntl.h>
 #include <string.h>
 #include <unistd.h>
-#include <stdarg.h>
-#include <time.h>
 
-FILE* fp;
+#define F_DEST "/tmp/timeral.log"
 
-// basename for __FILENAME__
+/*
+* Macro to get the basename of the __FILE__ macro.
+*/
+
 #define __FILENAME__	\
 	(strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 
-/* Macros for logging in different levels */
-#define log_fatal(...)		\
-	logger_fatal(fp, __FILENAME__, __LINE__, __VA_ARGS__)
+/*
+** Global variables, the file descriptor to write on, and the log level.
+*/
+int			g_log_fd;
+int			g_log_lvl;
 
-#define log_error(...)		\
-	logger_error(fp, __FILENAME__, __LINE__, __VA_ARGS__)
+/*
+** Tools functions.
+*/
 
-#define log_warn(...)		\
-	logger_warn(fp, __FILENAME__, __LINE__, __VA_ARGS__)
+int	logger_init_open_file(char *log_file);
 
-#define log_success(...)	\
-	logger_success(fp, __FILENAME__, __LINE__, __VA_ARGS__)
+void logger_fatal(int fd, char *file, int line, const char *fmt, ...);
+void logger_error(int fd, char *file, int line, const char *fmt, ...);
+void logger_warn(int fd, char *file, int line, const char *fmt, ...);
+void logger_success(int fd, char *file, int line, const char *fmt, ...);
+void logger_info(int fd, char *file, int line, const char *fmt, ...);
+void logger_debug(int fd, char *file, int line, const char *fmt, ...);
+void logger_trace(int fd, char *file, int line, const char *fmt, ...);
 
-#define log_info(...)		\
-	logger_info(fp, __FILENAME__, __LINE__, __VA_ARGS__)
-
-#define log_debug(...)		\
-	logger_debug(fp, __FILENAME__, __LINE__, __VA_ARGS__)
-
-#define log_trace(...)		\
-	logger_trace(fp, __FILENAME__, __LINE__, __VA_ARGS__)
-
-
-/* logger_init: initialize the logger pointer with the file */
-int logger_init(char *filename);
-
-/* logger_close: free up the resources logger allocates */
-int logger_close(void);
-
-/* display a log message with fatal level */
-void logger_fatal(FILE *fp, char *file, int line, const char *fmt, ...);
-/* display a log message with error level */
-void logger_error(FILE *fp, char *file, int line, const char *fmt, ...);
-/* display a log message with warn level */
-void logger_warn(FILE *fp, char *file, int line, const char *fmt, ...);
-/* display a log message with success level */
-void logger_success(FILE *fp, char *file, int line, const char *fmt, ...);
-/* display a log message with info level */
-void logger_info(FILE *fp, char *file, int line, const char *fmt, ...);
-/* display a log message with debug level */
-void logger_debug(FILE *fp, char *file, int line, const char *fmt, ...);
-/* display a log message with trace level */
-void logger_trace(FILE *fp, char *file, int line, const char *fmt, ...);
-
-/* logger_get_time: get the current time */
 char *logger_get_time(void);
 
+#define D_OFF 0
+
+#define D_ERROR 2
+#define D_WARN	3
+#define D_FATAL 1
+#define D_SUCCESS 4
+#define D_INFO	5
+#define D_DEBUG 6
+#define D_TRACE 7
+
+/*
+** Functions to use for display log messages.
+*/
+
+#define log_fatal(...)		\
+	logger_fatal(g_log_fd, __FILENAME__, __LINE__, __VA_ARGS__)
+
+#define log_error(...)		\
+	logger_error(g_log_fd, __FILENAME__, __LINE__, __VA_ARGS__)
+
+#define log_warn(...)		\
+	logger_warn(g_log_fd, __FILENAME__, __LINE__, __VA_ARGS__)
+
+#define log_success(...)	\
+	logger_success(g_log_fd, __FILENAME__, __LINE__, __VA_ARGS__)
+
+#define log_info(...)		\
+	logger_info(g_log_fd, __FILENAME__, __LINE__, __VA_ARGS__)
+
+#define log_debug(...)		\
+	logger_debug(g_log_fd, __FILENAME__, __LINE__, __VA_ARGS__)
+
+#define log_trace(...)		\
+	logger_trace(g_log_fd, __FILENAME__, __LINE__, __VA_ARGS__)
+
+/*
+** Setup the logger and write a sample message 'INFO' if success on the given
+** log output (the log_file paramater).
+** - The level parameter must be one of the define D_*. If it is not one of
+** them, the define D_OFF will be used.
+*/
+
+int	logger_init(int level, char *log_file);
+
+
+/*
+Destroy the log file 
+*/
+int logger_destroy(void);
+
+/*
+** Display an 'INFO' message and close the file descriptor of the logger.
+*/
+
+int	logger_close(void);
 
 #endif // TIMERAL_LOG_H
 

@@ -4,10 +4,14 @@
 #include <signal.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <syslog.h>
+
+#define RELEASE 0
+
 #include "include/log.h"
 
-/* daemonify the process */  
+int i;
+
+/* daemon the process */  
 static void skeleton_daemon() {
     pid_t pid;
     /* Fork off the parent process */
@@ -38,36 +42,43 @@ static void skeleton_daemon() {
     
     /* Change the working directory to the root directory */
     chdir("/");
-    
+
+    /* Open the log file */
+    printf("INFO: logger file destination: %s\n", F_DEST);
+
+    if (logger_init(D_TRACE, F_DEST) != 0) {
+        fprintf(stderr, "error: Cannot initialize logger.\n");  
+    } 
     /* Close all open file descriptors */
     int x;
-    for (x = sysconf(_SC_OPEN_MAX); x>=0; x--) {
-        close (x);
-    }
-    
-    /* Open the log file */
-    if (logger_init("/var/log/timeral.log")) {
-        exit(EXIT_FAILURE);
-    }  
+    close(STDIN_FILENO);
+    close(STDOUT_FILENO);
+    close(STDERR_FILENO);
 }
 
 int main(int argc, char *argv[]) {
     // cultivate the daemon environment
     skeleton_daemon();
-     
-    
-    
 
-    // int tty = 120;
-    // int delay = 3;
+    log_info("%s", "starting execution");
 
-    // while (tty > 0) {
-    //     sleep(delay);
-    //     tty -= delay;
-    // }
+    int tty = 120;
+    int delay = 3;
 
-    if (logger_close()) {
-        return EXIT_FAILURE;
+    while (tty >= 0) {
+        sleep(delay);
+        log_info("value of tty: %d", tty);
+        tty -= delay;
     }
-    return EXIT_SUCCESS;
+	int ret = logger_close();
+    if (ret) 
+        return EXIT_FAILURE;
+
+#if !RELEASE
+    sleep(30);
+    ret = logger_destroy();
+    if (ret)
+        return EXIT_FAILURE;
+#endif
+    return 0;
 }

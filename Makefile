@@ -38,9 +38,23 @@ $(BUILD_DIR)/%.cpp.o: %.cpp
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $< -o $@
 
 
-.PHONY: clean
+.PHONY: clean install uninstall
+
 clean:
 	rm -r $(BUILD_DIR) $(TARGET_EXEC)
+
+
+# Install
+ifeq ($(PREFIX),)
+    PREFIX := /usr/local
+endif
+
+install:
+	cp ./$(TARGET_EXEC) $(PREFIX)/bin/
+
+uninstall:
+	rm -rf $(PREFIX)/bin/$(TARGET_EXEC)
+
 
 # Include the .d makefiles. The - at the front suppresses the errors of missing
 # Makefiles. Initially, all the .d files will be missing, and we don't want those
