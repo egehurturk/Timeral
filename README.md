@@ -36,11 +36,12 @@ $ timeral start -s 45 -h 2 -m 43
    * `-s` or `--seconds`: for specifying the seconds
    * `-m` or `--minutes`: for specifying the minutes
    * `-h` or `--hours`: for specifying the hours
+   * `-d` or `--display`: for displaying the timer in the terminal (as opposed to being daemon)
   For example, `timer -s 40 -m 30 -h 2` will have a duration of 2 hours, 30 minutes, and 40 seconds.
 
       * If you have values that are bigger than `60`, e.g., if you set the minutes value to `79`, it will be displayed as hours: `1hr 19 min` (the same applies to minutes-seconds and seconds-hours). 
   
-    Once you start the timer, it will display a progress bar that shows how much of the duration is completed.
+    Once you start the timer, if you include the `-d|--display` option, it will display a progress bar that shows how much of the duration is completed.
     &nbsp;
 
     
@@ -65,3 +66,7 @@ $ timeral start -s 45 -h 2 -m 43
     ```
     Again, the ID can be found from listing the timers.
 
+5. **Displaying a daemon timer**: You can display the timer in the current terminal with:
+    ```bash
+    $ timeral display <ID>
+    ```

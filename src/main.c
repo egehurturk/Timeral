@@ -5,8 +5,11 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <ctype.h>
+#include <signal.h>
 #include "include/log.h"
 #include "include/t_timer.h"
+#include "include/arg.h"
 
 #define RELEASE 0
 #define LS      99
@@ -14,16 +17,15 @@
 #define RST     101
 #define STP     102
 #define DSP     103
+#define HLP     104
 
-struct _ArgumentInfo {
-    float seconds;
-    float minutes;
-    float hours;
-    int display_enabled;
-    int stopwatch;
-};
+// https://www.youtube.com/watch?v=1KQqpiXxvWQ
+// https://github.com/MLGDanielProgrammingTutorial/C/blob/master/.gitignore/Timer
+// https://www.youtube.com/watch?v=RZKOrJm7_o4
+// https://www.youtube.com/watch?v=t_vM_8TLjFE
 
-struct _ArgumentInfo* arg_inf;
+
+struct _argument_info* arg_inf;
 
 /* daemon the process */  
 static void skeleton_daemon() {
@@ -57,38 +59,35 @@ static void skeleton_daemon() {
     /* Change the working directory to the root directory */
     chdir("/");
 
-    /* Open the log file */
-    printf("INFO: logger file destination: %s\n", F_DEST);
-
-    if (logger_init(D_TRACE, F_DEST) != 0) {
-        fprintf(stderr, "error: Cannot initialize logger.\n");  
-    } 
     /* Close all open file descriptors */
-    int x;
     close(STDIN_FILENO);
     close(STDOUT_FILENO);
     close(STDERR_FILENO);
 }
 
-static void print_usage(void) {
-    printf("usage: timeral <command> [options] \n");
-    printf("command should be one of: \n");
-    printf("\to \"start\" (without quotation marks)\n");
-    printf("\to \"stop\" (without quotation marks)\n");
-    printf("\to \"ls\" (without quotation marks)\n");
-    printf("\to \"reset\" (without quotation marks)\n");
-    printf("\to \"display\" (without quotation marks)\n");
+static void print_verbose_usage(void) {
+    printf("usage: timeral <command> [options [val]] [arguments] \n");
+    printf("The following commands are avaliable: \n");
+    printf("\to start\n");
+    printf("\to stop\n");
+    printf("\to ls\n");
+    printf("\to reset\n");
+    printf("\to display\n");
     printf("\n");
-    printf("Options for start command: \n");
-    printf("\to [-s|--seconds] [second_value] [-m|--minutes] [minute value] [-h|--hours] [hour value] [-d|--display]\n");
-    printf("\t\to -s or --seconds followed by the value will set the timer's seconds duration. \n");
-    printf("\t\to -m or --minutes followed by the value will set the timer's minutes duration. \n");
-    printf("\t\to -h or --hours followed by the value will set the timer's hours duration. \n");
-    printf("\t\to -d or --display to display the timer in the current terminal (as opposed to being a daemon), \n");
-    printf("\t\to If any of the time indicators is not present, the timer will act as a stopwatch, which means that it will count up the seconds until it is stopped.\n");
-    printf("Arguments for stop, display, and reset commands \n");
-    printf("\to <ID>\n");
-    printf("\t\to the ID is required to stop or reset the timer. IDs of timers can be retrieved by listing the active timers.\n");
+    printf("The following options are avaliable only for the start command:\n");
+    printf("If any of the time indicators is not present, the timer will act as a stopwatch, which means that it will count up the seconds until it is stopped.\n\n");
+    printf("-s val, --seconds num\n\n");
+    printf("\t\tset the timer's seconds duration.\n\n");
+     printf("-m val, --minutes num\n\n");
+    printf("\t\tset the timer's minutes duration.\n\n");
+     printf("-h val, --hours num\n\n");
+    printf("\t\tset the timer's hours duration.\n\n");
+     printf("-d, --display\n\n");
+    printf("\t\tdisplay the timer in the current terminal (as opposed to being a daemon).\n\n");
+    
+    printf("The following arguments are only avaliable for stop, reset, display commands: \n\n");
+    printf("<ID>\n");
+    printf("\t\t the ID of a timer is required to stop or reset that timer. The IDs of timers can be retrieved by `timeral ls`.\n");
     printf("\n\n");
     printf("Examples: \n");
     printf("$ timeral start -h 1 -m 30 -d\t\t\t	--> will start a 1 hours 30 minutes timer that is not a daemon timer (runs in background). \n");
@@ -96,30 +95,46 @@ static void print_usage(void) {
     printf("$ timeral ls\t\t\t  			--> will list all active timers.\n");
     printf("$ timeral display 34032\t\t\t		--> will display the timer in the terminal.\n");
     printf("$ timeral reset 34032\t\t\t		--> will display the timer in the terminal.\n");
+    printf("\n\n");
+    printf("INFO: logger file destination: %s\n", F_DEST);
+}
+
+static void print_usage(void) {
+    printf("usage: timeral <command> [options [val]] [arguments] \n");
+}
+
+static int is_not_number(char *s) {
+    int len = strlen(s);
+    for (int i = 0; i < len; i++) 
+        if (!isdigit(s[i]))
+            return 1;
+    return 0;
 }
 
 static int validate_args(int argc, char* argv[]) {
-    arg_inf = malloc(sizeof(struct _ArgumentInfo));
     // validate the arguments for START command
     int s_present = 0, m_present = 0, h_present = 0, d_present = 0;
     if (argc == 2) 
         arg_inf->stopwatch = 1;
     for (int i = 2; i < argc; i++) {
         char *current = argv[i];
-        if (strcmp(current, "--seconds") == 0 || strcmp(current, "-s") == 0)  {
+        if (strcmp(current, "--seconds") == 0 || strcmp(current, "-s") == 0 && i < argc - 1)  {
             if (s_present >= 1) return 1;
+            if (is_not_number(argv[i+1])) return 1;
             s_present++;
-            arg_inf->seconds = atof(argv[++i]);
+            arg_inf->seconds = atoi(argv[++i]);
         }
-        else if (strcmp(current, "-m") == 0 || strcmp(current, "--minutes") == 0) {
+        else if (strcmp(current, "-m") == 0 || strcmp(current, "--minutes") == 0 && i < argc - 1) {
             if (m_present >= 1) return 1;
+            if (is_not_number(argv[i+1])) return 1;
             m_present++;
-            arg_inf->minutes = atof(argv[++i]);
+            arg_inf->minutes = atoi(argv[++i]);
         }
-        else if (strcmp(current, "-h") == 0 || strcmp(current, "--hours") == 0) {
+        else if (strcmp(current, "-h") == 0 || strcmp(current, "--hours") == 0 && i < argc - 1) {
             if (h_present >= 1) return 1;
+            if (is_not_number(argv[i+1])) return 1;
             h_present++;
-            arg_inf->hours = atof(argv[++i]);
+            arg_inf->hours = atoi(argv[++i]);
         }
         else if (strcmp(current, "-d") == 0 || strcmp(current, "--display") == 0) {
             if (d_present >= 1) return 1;
@@ -174,29 +189,41 @@ static int process_i(int argc, char *argv[]) {
         return STP;
     } else if (strcmp(command, "display") == 0 && argc == 3) {
         return DSP;
+    } else if ((strcmp(command, "-h") == 0 || strcmp(command, "--help") == 0 )&& argc == 2) {
+        return HLP;
     } else {
         return 1;
     }
     return 0;
 }
 
-
-
 static int check_ID(char *ID) {
     return 1;
 }
 
 int main(int argc, char *argv[]) {
+    // preprocessing
+    signal(SIGINT, skeleton_daemon);
+
+    arg_inf = malloc(sizeof(struct _argument_info));
+
+    if (logger_init(D_TRACE, F_DEST) != 0) {
+        fprintf(stderr, "error: Cannot initialize logger.\n");  
+    } 
+    
+
     int code = process_i(argc, argv);
     if (code == 1) {
         print_usage();
         return 1;
     }
 
+    log_info("%s", "starting execution");
+
     switch (code) {
     case LS: 
         /* list timers */
-        printf("list is called...\n");
+        // timeral_list_timers();
         break;
     case STP:
         if (check_ID(argv[2])) {
@@ -220,25 +247,25 @@ int main(int argc, char *argv[]) {
         printf("reset is called...\n");
         break;
     case STRT:
-        printf("seconds: %.1f\n", arg_inf->seconds);
-        printf("minutes: %.1f\n", arg_inf->minutes);
-        printf("hours: %.1f\n", arg_inf->hours);
-        printf("display enabled: %d\n", arg_inf->display_enabled);
-        printf("stopwatch enabled: %d\n", arg_inf->stopwatch);
         /* start a timer */
+        display();
+        break;
+    case HLP:
+        if (arg_inf->help >= 1) {
+            print_usage();
+            return 1;
+        }
+        print_verbose_usage();
+        arg_inf->help++;
         break;
     }
-
-    // cultivate the daemon environment
-    // skeleton_daemon();
-
-    // log_info("%s", "starting execution");
+    
 
    
-	// int ret = logger_close();
-    // if (ret) 
-        // return EXIT_FAILURE;
-    // return 0;
+	int ret = logger_close();
+    if (ret) 
+        return EXIT_FAILURE;
+    return 0;
 }
 
 
